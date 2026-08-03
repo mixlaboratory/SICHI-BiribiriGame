@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Joy-Conのスティックで2Dオブジェクトを移動し，
-/// ボタン入力をConsoleへ表示して振動させるスクリプト．
+/// Joy-Conをポインタとして使用し，
+/// Joy-Conが指している方向へ2Dオブジェクトを移動する．
 /// </summary>
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(Rigidbody2D))]
@@ -17,33 +17,37 @@ public class Joycon2DController : MonoBehaviour
     private int joyconIndex = 0;
 
 
-    [Header("移動設定")]
+    [Header("ポインタ設定")]
 
+    [Tooltip("Joy-Conから仮想平面までの距離．大きいほど感度が高くなる")]
     [SerializeField]
-    private float moveSpeed = 5.0f;
+    private float pointerDistance = 10.0f;
+
+    [Tooltip("ポインタ移動量の倍率")]
+    [SerializeField]
+    private float pointerSensitivity = 1.0f;
+
+    [Tooltip("この値未満の小さな動きを無視する")]
+    [SerializeField]
+    private float pointerDeadZone = 0.03f;
+
+    [Tooltip("基準位置から移動できる最大距離")]
+    [SerializeField]
+    private float maximumPointerOffset = 15.0f;
+
+    [Tooltip("Playerがポインタへ追従する速度")]
+    [SerializeField]
+    private float followSpeed = 30.0f;
+
+    [Tooltip("左右と上下の入力軸を交換する")]
+    [SerializeField]
+    private bool swapAxes = false;
 
     [SerializeField]
     private bool invertX = false;
 
     [SerializeField]
     private bool invertY = false;
-
-    [Tooltip("この値未満のスティック入力を無視する")]
-    [SerializeField, Range(0.0f, 1.0f)]
-    private float stickDeadZone = 0.1f;
-
-    [Header("ジャイロ設定")]
-
-    [Tooltip("最大入力として扱う傾き角度")]
-    [SerializeField]
-    private float maxTiltDegrees = 25.0f;
-
-    [Tooltip("この角度未満の傾きを無視する")]
-    [SerializeField]
-    private float gyroDeadZoneDegrees = 2.0f;
-
-    private Quaternion neutralRotation = Quaternion.identity;
-    private bool gyroCalibrated = false;
 
 
     [Header("振動設定")]
@@ -69,7 +73,16 @@ public class Joycon2DController : MonoBehaviour
     private Rigidbody2D rb;
     private Joycon joycon;
 
-    private Vector2 moveInput;
+    private Quaternion neutralRotation = Quaternion.identity;
+
+    /*
+     * ポインタの基準となるPlayerの位置．
+     * スティック押し込みで現在位置へ再設定する．
+     */
+    private Vector2 pointerOrigin;
+    private Vector2 targetPosition;
+
+    private bool pointerCalibrated = false;
 
     private Joycon.Button[] allButtons;
 
@@ -83,6 +96,9 @@ public class Joycon2DController : MonoBehaviour
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+
+        pointerOrigin = rb.position;
+        targetPosition = rb.position;
 
         allButtons =
             (Joycon.Button[])Enum.GetValues(
@@ -100,7 +116,7 @@ public class Joycon2DController : MonoBehaviour
     private void Update()
     {
         /*
-         * JoyconManagerやJoy-Conの取得が遅れた場合に備えて，
+         * JoyconManagerやJoy-Conの準備が遅れた場合に備え，
          * 0.5秒ごとに再検索する．
          */
         if (joycon == null)
@@ -113,13 +129,11 @@ public class Joycon2DController : MonoBehaviour
                 TryGetJoycon();
             }
 
-            moveInput = Vector2.zero;
             return;
         }
 
         /*
-         * Joy-Conとの接続が切れた場合は，
-         * Joy-Conの参照を解除する．
+         * Joy-Conとの接続が切れた場合．
          */
         if (joycon.state <= Joycon.state_.NO_JOYCONS)
         {
@@ -129,7 +143,7 @@ public class Joycon2DController : MonoBehaviour
             );
 
             joycon = null;
-            moveInput = Vector2.zero;
+            pointerCalibrated = false;
 
             joyconFoundLogged = false;
             joyconWarningLogged = false;
@@ -137,19 +151,20 @@ public class Joycon2DController : MonoBehaviour
             return;
         }
 
-        ReadGyroTilt();
-
         /*
-        * スティック押し込みで中央位置を再設定する．
-        */
+         * スティック押し込みで，
+         * 現在のJoy-Conの向きとPlayer位置を中央に設定する．
+         */
         if (joycon.GetButtonDown(Joycon.Button.STICK))
         {
-            neutralRotation = joycon.GetVector();
+            CalibratePointer();
 
             Debug.Log(
-                "Joy-Conの中央位置を再設定しました．"
+                "ポインタの中央位置を再設定しました．"
             );
         }
+
+        ReadPointer();
 
         CheckButtons();
     }
@@ -166,8 +181,7 @@ public class Joycon2DController : MonoBehaviour
             {
                 Debug.LogWarning(
                     "JoyconManagerが見つかりません．" +
-                    "HierarchyにJoyconManagerを配置し，" +
-                    "JoyconManager.csを追加してください．"
+                    "HierarchyにJoyconManagerを1つ配置してください．"
                 );
 
                 managerWarningLogged = true;
@@ -186,10 +200,8 @@ public class Joycon2DController : MonoBehaviour
             if (!joyconWarningLogged)
             {
                 Debug.LogWarning(
-                    "JoyconManagerは見つかりましたが，" +
                     "Joy-Conが認識されていません．" +
-                    "Unityを再生する前に，WindowsのBluetooth設定で" +
-                    "Joy-Conを接続してください．"
+                    "WindowsのBluetooth接続を確認してください．"
                 );
 
                 joyconWarningLogged = true;
@@ -198,28 +210,23 @@ public class Joycon2DController : MonoBehaviour
             return;
         }
 
-        joyconWarningLogged = false;
-
-        /*
-         * 指定された番号が範囲外の場合は，
-         * 最初のJoy-Conを使用する．
-         */
         if (joyconIndex < 0 ||
             joyconIndex >= joycons.Count)
         {
             Debug.LogWarning(
                 $"Joycon Index={joyconIndex}は範囲外です．" +
-                "Index=0のJoy-Conを使用します．"
+                "Index=0を使用します．"
             );
 
             joyconIndex = 0;
         }
 
-        Joycon candidate = joycons[joyconIndex];
+        Joycon candidate =
+            joycons[joyconIndex];
 
         /*
-        * Joy-Conの入力通信が開始されるまで待つ．
-        */
+         * IMUデータの受信開始まで待つ．
+         */
         if (candidate.state != Joycon.state_.IMU_DATA_OK)
         {
             if (!joyconWarningLogged)
@@ -239,12 +246,7 @@ public class Joycon2DController : MonoBehaviour
         joyconWarningLogged = false;
         joycon = candidate;
 
-        neutralRotation = joycon.GetVector();
-        gyroCalibrated = true;
-
-        Debug.Log(
-            "Joy-Conの現在の姿勢を中央位置として設定しました．"
-        );
+        CalibratePointer();
 
         if (!joyconFoundLogged)
         {
@@ -265,58 +267,30 @@ public class Joycon2DController : MonoBehaviour
 
 
     /// <summary>
-    /// Joy-Conのスティック入力を取得する．
+    /// 現在のJoy-Conの向きとPlayer位置を基準にする．
     /// </summary>
-    private void ReadStick()
+    private void CalibratePointer()
     {
-        float[] stick = joycon.GetStick();
+        neutralRotation =
+            joycon.GetVector();
 
-        if (stick == null || stick.Length < 2)
-        {
-            moveInput = Vector2.zero;
-            return;
-        }
+        pointerOrigin =
+            rb.position;
 
-        float x =
-            invertX
-                ? -stick[0]
-                : stick[0];
+        targetPosition =
+            rb.position;
 
-        float y =
-            invertY
-                ? -stick[1]
-                : stick[1];
-
-        moveInput = new Vector2(x, y);
-
-        /*
-         * スティックの小さな揺れを無視する．
-         */
-        if (moveInput.magnitude < stickDeadZone)
-        {
-            moveInput = Vector2.zero;
-        }
-        else
-        {
-            /*
-             * 斜め入力時に速度が速くなりすぎないようにする．
-             */
-            moveInput =
-                Vector2.ClampMagnitude(
-                    moveInput,
-                    1.0f
-                );
-        }
+        pointerCalibrated = true;
     }
 
+
     /// <summary>
-    /// Joy-Conの傾きから2D移動量を取得する．
+    /// Joy-Conが指している方向と仮想平面との交点を求める．
     /// </summary>
-    private void ReadGyroTilt()
+    private void ReadPointer()
     {
-        if (!gyroCalibrated)
+        if (!pointerCalibrated)
         {
-            moveInput = Vector2.zero;
             return;
         }
 
@@ -324,65 +298,53 @@ public class Joycon2DController : MonoBehaviour
             joycon.GetVector();
 
         /*
-        * 最初に記録した姿勢から，
-        * 現在どの程度傾いているかを求める．
-        */
+         * 基準姿勢からの相対的な回転を求める．
+         */
         Quaternion relativeRotation =
             Quaternion.Inverse(neutralRotation) *
             currentRotation;
 
-        Vector3 angles =
-            relativeRotation.eulerAngles;
+        /*
+         * Joy-Conが指している方向を求める．
+         * 中央姿勢ではVector3.forwardになる．
+         */
+        Vector3 pointerDirection =
+            relativeRotation *
+            Vector3.forward;
 
         /*
-        * 0～360度の角度を，
-        * -180～180度へ変換する．
-        */
-        float horizontalTilt =
-            Mathf.DeltaAngle(
-                0.0f,
-                angles.z
-            );
-
-        float verticalTilt =
-            Mathf.DeltaAngle(
-                0.0f,
-                angles.x
-            );
-
-        /*
-        * 小さな手振れを無視する．
-        */
-        if (
-            Mathf.Abs(horizontalTilt) <
-            gyroDeadZoneDegrees
-        )
+         * Joy-Conが仮想平面と反対方向を向いた場合は，
+         * 交点を計算しない．
+         */
+        if (pointerDirection.z <= 0.05f)
         {
-            horizontalTilt = 0.0f;
-        }
-
-        if (
-            Mathf.Abs(verticalTilt) <
-            gyroDeadZoneDegrees
-        )
-        {
-            verticalTilt = 0.0f;
+            return;
         }
 
         /*
-        * 傾き角度を-1～1の移動入力へ変換する．
-        */
-        float x = Mathf.Clamp(
-            horizontalTilt / maxTiltDegrees,
-            -1.0f,
-            1.0f
-        );
+         * z=pointerDistanceにある仮想平面との交点を計算する．
+         */
+        float intersectionDistance =
+            pointerDistance /
+            pointerDirection.z;
 
-        float y = Mathf.Clamp(
-            -verticalTilt / maxTiltDegrees,
-            -1.0f,
-            1.0f
-        );
+        float x =
+            pointerDirection.x *
+            intersectionDistance;
+
+        float y =
+            pointerDirection.y *
+            intersectionDistance;
+
+        /*
+         * Joy-Conの持ち方に合わせて軸を交換できるようにする．
+         */
+        if (swapAxes)
+        {
+            float temporary = x;
+            x = y;
+            y = temporary;
+        }
 
         if (invertX)
         {
@@ -394,13 +356,43 @@ public class Joycon2DController : MonoBehaviour
             y = -y;
         }
 
-        moveInput =
+        x *= pointerSensitivity;
+        y *= pointerSensitivity;
+
+        /*
+         * 小さな手振れを無視する．
+         */
+        if (Mathf.Abs(x) < pointerDeadZone)
+        {
+            x = 0.0f;
+        }
+
+        if (Mathf.Abs(y) < pointerDeadZone)
+        {
+            y = 0.0f;
+        }
+
+        Vector2 pointerOffset =
             new Vector2(x, y);
+
+        pointerOffset =
+            Vector2.ClampMagnitude(
+                pointerOffset,
+                maximumPointerOffset
+            );
+
+        /*
+         * 基準位置からポインタ分だけ移動した場所を，
+         * Playerの移動先にする．
+         */
+        targetPosition =
+            pointerOrigin +
+            pointerOffset;
     }
 
 
     /// <summary>
-    /// すべてのJoy-Conボタンを確認する．
+    /// ボタン入力と振動を処理する．
     /// </summary>
     private void CheckButtons()
     {
@@ -425,23 +417,10 @@ public class Joycon2DController : MonoBehaviour
     }
 
 
-    /// <summary>
-    /// Joy-Conを振動させる．
-    /// </summary>
     private void StartRumble()
     {
-        /*
-         * Joycon.csではATTACHED以下の状態では，
-         * SetRumbleが実行されない．
-         */
         if (joycon.state <= Joycon.state_.ATTACHED)
         {
-            Debug.LogWarning(
-                "Joy-Conは検出されていますが，" +
-                "入力データの受信状態になっていません．" +
-                $"現在のState={joycon.state}"
-            );
-
             return;
         }
 
@@ -451,27 +430,27 @@ public class Joycon2DController : MonoBehaviour
             rumbleStrength,
             rumbleMilliseconds
         );
-
-        Debug.Log(
-            $"振動命令を実行しました．" +
-            $"強度={rumbleStrength:F2}，" +
-            $"時間={rumbleMilliseconds}ms"
-        );
     }
 
 
     private void FixedUpdate()
     {
-        if (joycon == null)
+        if (joycon == null ||
+            !pointerCalibrated)
         {
             return;
         }
 
+        /*
+         * ポインタ位置へPlayerを追従させる．
+         */
         Vector2 nextPosition =
-            rb.position +
-            moveInput *
-            moveSpeed *
-            Time.fixedDeltaTime;
+            Vector2.MoveTowards(
+                rb.position,
+                targetPosition,
+                followSpeed *
+                Time.fixedDeltaTime
+            );
 
         rb.MovePosition(nextPosition);
     }
@@ -479,6 +458,9 @@ public class Joycon2DController : MonoBehaviour
 
     private void OnDisable()
     {
-        moveInput = Vector2.zero;
+        if (rb != null)
+        {
+            targetPosition = rb.position;
+        }
     }
 }

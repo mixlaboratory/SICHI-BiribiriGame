@@ -1405,6 +1405,7 @@ GameObject:
   - component: {fileID: 499178316}
   - component: {fileID: 499178320}
   - component: {fileID: 499178321}
+  - component: {fileID: 499178322}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1552,7 +1553,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 499178315}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 573e813c128520147b55cc6560cc429b, type: 3}
   m_Name: 
@@ -1570,7 +1571,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a54b6017f91f96540a8239c726387553, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameManager: {fileID: 0}
+  gameManager: {fileID: 1426735011}
+--- !u!114 &499178322
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 499178315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f3c0540a9267ac45b6e47ffbe4836d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  joyconIndex: 0
+  pointerDistance: 10
+  pointerSensitivity: 3
+  pointerDeadZone: 0.03
+  maximumPointerOffset: 25
+  followSpeed: 30
+  swapAxes: 0
+  invertX: 0
+  invertY: 0
+  rumbleOnAnyButton: 1
+  rumbleStrength: 0.134
+  rumbleMilliseconds: 500
+  rumbleLowFrequency: 160
+  rumbleHighFrequency: 320
 --- !u!1 &502550933
 GameObject:
   m_ObjectHideFlags: 0
@@ -4748,6 +4775,52 @@ MonoBehaviour:
   activeColor: {r: 1, g: 0, b: 0, a: 1}
   warningColor: {r: 1, g: 0.5, b: 0, a: 1}
   cycleSpeedMultiplier: 1
+--- !u!1 &1851703507
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1851703509}
+  - component: {fileID: 1851703508}
+  m_Layer: 0
+  m_Name: JoyconManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1851703508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1851703507}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 405bad29b2b998c408059182c189d9e9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  EnableIMU: 1
+  EnableLocalize: 1
+--- !u!4 &1851703509
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1851703507}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 26.19551, y: -60.705627, z: -2.7838345}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2019175611
 GameObject:
   m_ObjectHideFlags: 0
@@ -5320,3 +5393,4 @@ SceneRoots:
   - {fileID: 3847516260688209605}
   - {fileID: 739843171}
   - {fileID: 96168491}
+  - {fileID: 1851703509}
