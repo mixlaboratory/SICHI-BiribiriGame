@@ -9,51 +9,51 @@ public class PlayerController : MonoBehaviour
     public enum ControlMode
     {
         Mouse,
-        JoyCon
+        JoyConTilt
     }
 
     [Header("操作モード")]
     [SerializeField]
-    private ControlMode controlMode = ControlMode.JoyCon;
+    private ControlMode controlMode = ControlMode.JoyConTilt;
 
 
-    // =====================================
+    // ==================================================
     // マウス
-    // =====================================
+    // ==================================================
 
     [Header("マウス設定")]
     [SerializeField]
     private float mouseFollowSpeed = 15f;
 
 
-    // =====================================
+    // ==================================================
     // Joy-Con
-    // =====================================
+    // ==================================================
 
     [Header("Joy-Con設定")]
-    [Tooltip("使用するJoy-Conの番号。1台なら0")]
+    [Tooltip("Joy-Conが1台なら0")]
     [SerializeField]
     private int joyconIndex = 0;
 
+    [Header("傾き操作設定")]
 
-    [Header("Joy-Con ポインター設定")]
+    [Tooltip("Playerの最大移動速度")]
     [SerializeField]
-    private float pointerDistance = 10f;
+    private float tiltMoveSpeed = 6f;
 
+    [Tooltip("小さい傾きを無視する角度")]
     [SerializeField]
-    private float pointerSensitivity = 1.3f;
+    private float tiltDeadZone = 4f;
 
+    [Tooltip("この角度で最大入力になる")]
     [SerializeField]
-    private float pointerDeadZone = 0.03f;
+    private float maximumTiltAngle = 30f;
 
+    [Tooltip("傾きの感度")]
     [SerializeField]
-    private float maximumPointerOffset = 15f;
+    private float tiltSensitivity = 1f;
 
-    [SerializeField]
-    private float joyconFollowSpeed = 40f;
-
-
-    [Header("Joy-Con 軸調整")]
+    [Header("軸調整")]
     [SerializeField]
     private bool swapAxes = false;
 
@@ -64,9 +64,9 @@ public class PlayerController : MonoBehaviour
     private bool invertY = false;
 
 
-    // =====================================
+    // ==================================================
     // ノックバック
-    // =====================================
+    // ==================================================
 
     [Header("ノックバック")]
     [SerializeField]
@@ -76,9 +76,9 @@ public class PlayerController : MonoBehaviour
     private float knockbackDuration = 0.18f;
 
 
-    // =====================================
-    // 振動
-    // =====================================
+    // ==================================================
+    // Joy-Con振動
+    // ==================================================
 
     [Header("Joy-Con振動")]
     [SerializeField, Range(0f, 1f)]
@@ -94,22 +94,26 @@ public class PlayerController : MonoBehaviour
     private float rumbleHighFrequency = 320f;
 
 
-    // =====================================
+    // ==================================================
     // 内部変数
-    // =====================================
+    // ==================================================
 
     private Rigidbody2D rb;
     private Camera mainCamera;
 
     private Joycon joycon;
 
+    // Joy-Conを普通に持っている状態
     private Quaternion neutralRotation =
         Quaternion.identity;
 
-    private Vector2 pointerOrigin;
-    private Vector2 targetPosition;
+    // Joy-Conから得た移動入力
+    private Vector2 tiltInput;
 
-    private bool pointerCalibrated = false;
+    // マウス用
+    private Vector2 mouseTargetPosition;
+
+    private bool joyconCalibrated = false;
     private bool canMove = false;
     private bool isKnockback = false;
 
@@ -117,27 +121,22 @@ public class PlayerController : MonoBehaviour
 
     private float nextSearchTime;
 
-    private bool managerWarningLogged = false;
-    private bool joyconWarningLogged = false;
-
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+
         mainCamera = Camera.main;
 
-        pointerOrigin = rb.position;
-        targetPosition = rb.position;
+        mouseTargetPosition =
+            rb.position;
     }
 
 
     private void Start()
     {
-        /*
-         * Joy-Conモードなら
-         * Joy-Conを探す
-         */
-        if (controlMode == ControlMode.JoyCon)
+        if (controlMode ==
+            ControlMode.JoyConTilt)
         {
             TryGetJoycon();
         }
@@ -146,29 +145,27 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        if (!canMove || isKnockback)
+        if (controlMode ==
+            ControlMode.Mouse)
         {
-            return;
-        }
-
-        // ================================
-        // マウス操作
-        // ================================
-
-        if (controlMode == ControlMode.Mouse)
-        {
-            ReadMouse();
+            if (canMove &&
+                !isKnockback)
+            {
+                ReadMouse();
+            }
 
             return;
         }
 
-        // ================================
-        // Joy-Con操作
-        // ================================
+
+        // ============================
+        // Joy-Con検索
+        // ============================
 
         if (joycon == null)
         {
-            if (Time.unscaledTime >= nextSearchTime)
+            if (Time.unscaledTime >=
+                nextSearchTime)
             {
                 nextSearchTime =
                     Time.unscaledTime + 0.5f;
@@ -179,77 +176,354 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        /*
-         * 接続切れ確認
-         */
-        if (joycon.state <= Joycon.state_.NO_JOYCONS)
+
+        // ============================
+        // 接続切れ
+        // ============================
+
+        if (joycon.state <=
+            Joycon.state_.NO_JOYCONS)
         {
             Debug.LogWarning(
                 "Joy-Conとの接続が切れました"
             );
 
             joycon = null;
-            pointerCalibrated = false;
+            joyconCalibrated = false;
 
             return;
         }
 
-        /*
-         * スティック押し込みで
-         * Joy-Con中央を再設定
-         */
+
+        // ============================
+        // スティック押し込みで
+        // 中央姿勢を再設定
+        // ============================
+
         if (joycon.GetButtonDown(
             Joycon.Button.STICK))
         {
-            CalibratePointer();
+            CalibrateJoycon();
 
             Debug.Log(
-                "Joy-Conポインターを再センタリング"
+                "Joy-Con中央姿勢を再設定"
             );
         }
 
-        ReadJoyconPointer();
+
+        if (!canMove ||
+            isKnockback)
+        {
+            tiltInput = Vector2.zero;
+            return;
+        }
+
+
+        ReadTilt();
     }
 
 
     private void FixedUpdate()
     {
-        if (!canMove || isKnockback)
+        if (!canMove ||
+            isKnockback)
         {
             return;
         }
 
-        float speed;
 
-        if (controlMode == ControlMode.JoyCon)
+        // ==================================================
+        // マウス
+        // ==================================================
+
+        if (controlMode ==
+            ControlMode.Mouse)
         {
-            if (joycon == null ||
-                !pointerCalibrated)
-            {
-                return;
-            }
+            Vector2 nextPosition =
+                Vector2.MoveTowards(
+                    rb.position,
+                    mouseTargetPosition,
+                    mouseFollowSpeed *
+                    Time.fixedDeltaTime
+                );
 
-            speed = joyconFollowSpeed;
-        }
-        else
-        {
-            speed = mouseFollowSpeed;
-        }
-
-        Vector2 nextPosition =
-            Vector2.MoveTowards(
-                rb.position,
-                targetPosition,
-                speed * Time.fixedDeltaTime
+            rb.MovePosition(
+                nextPosition
             );
 
-        rb.MovePosition(nextPosition);
+            return;
+        }
+
+
+        // ==================================================
+        // Joy-Con傾き
+        // ==================================================
+
+        if (joycon == null ||
+            !joyconCalibrated)
+        {
+            return;
+        }
+
+
+        Vector2 movement =
+            tiltInput *
+            tiltMoveSpeed *
+            Time.fixedDeltaTime;
+
+
+        rb.MovePosition(
+            rb.position +
+            movement
+        );
     }
 
 
-    // =====================================
-    // マウス操作
-    // =====================================
+    // ==================================================
+    // Joy-Con取得
+    // ==================================================
+
+    private void TryGetJoycon()
+    {
+        if (JoyconManager.Instance == null)
+        {
+            Debug.LogWarning(
+                "JoyconManagerが見つかりません"
+            );
+
+            return;
+        }
+
+
+        List<Joycon> joycons =
+            JoyconManager.Instance.j;
+
+
+        if (joycons == null ||
+            joycons.Count == 0)
+        {
+            Debug.LogWarning(
+                "Joy-Conが認識されていません"
+            );
+
+            return;
+        }
+
+
+        if (joyconIndex < 0 ||
+            joyconIndex >= joycons.Count)
+        {
+            joyconIndex = 0;
+        }
+
+
+        Joycon candidate =
+            joycons[joyconIndex];
+
+
+        // IMUデータ準備待ち
+        if (candidate.state !=
+            Joycon.state_.IMU_DATA_OK)
+        {
+            return;
+        }
+
+
+        joycon = candidate;
+
+        CalibrateJoycon();
+
+
+        string side =
+            joycon.isLeft
+            ? "左Joy-Con"
+            : "右Joy-Con";
+
+
+        Debug.Log(
+            side +
+            " 傾き操作準備完了"
+        );
+    }
+
+
+    // ==================================================
+    // 中央姿勢
+    // ==================================================
+
+    private void CalibrateJoycon()
+    {
+        if (joycon == null)
+        {
+            return;
+        }
+
+
+        /*
+         * 今持っているJoy-Conの向きを
+         * 「傾き0」として登録
+         */
+        neutralRotation =
+            joycon.GetVector();
+
+
+        tiltInput =
+            Vector2.zero;
+
+
+        joyconCalibrated =
+            true;
+    }
+
+
+    // ==================================================
+    // 傾き取得
+    // ==================================================
+
+    private void ReadTilt()
+    {
+        if (!joyconCalibrated)
+        {
+            return;
+        }
+
+
+        Quaternion currentRotation =
+            joycon.GetVector();
+
+
+        /*
+         * 中央姿勢との差
+         */
+        Quaternion relativeRotation =
+            Quaternion.Inverse(
+                neutralRotation
+            ) *
+            currentRotation;
+
+
+        Vector3 angles =
+            relativeRotation.eulerAngles;
+
+
+        /*
+         * Euler角は0～360になるため
+         * -180～180へ変換
+         */
+        float tiltX =
+            Mathf.DeltaAngle(
+                0f,
+                angles.z
+            );
+
+
+        float tiltY =
+            Mathf.DeltaAngle(
+                0f,
+                angles.x
+            );
+
+
+        if (swapAxes)
+        {
+            float temp = tiltX;
+
+            tiltX = tiltY;
+            tiltY = temp;
+        }
+
+
+        if (invertX)
+        {
+            tiltX = -tiltX;
+        }
+
+
+        if (invertY)
+        {
+            tiltY = -tiltY;
+        }
+
+
+        /*
+         * デッドゾーン
+         */
+        tiltX =
+            ApplyTiltDeadZone(
+                tiltX
+            );
+
+
+        tiltY =
+            ApplyTiltDeadZone(
+                tiltY
+            );
+
+
+        /*
+         * 例えば30度傾けたら
+         * 入力1.0になる
+         */
+        float inputX =
+            Mathf.Clamp(
+                tiltX /
+                maximumTiltAngle,
+                -1f,
+                1f
+            );
+
+
+        float inputY =
+            Mathf.Clamp(
+                tiltY /
+                maximumTiltAngle,
+                -1f,
+                1f
+            );
+
+
+        tiltInput =
+            new Vector2(
+                inputX,
+                inputY
+            ) *
+            tiltSensitivity;
+
+
+        tiltInput =
+            Vector2.ClampMagnitude(
+                tiltInput,
+                1f
+            );
+    }
+
+
+    private float ApplyTiltDeadZone(
+        float angle
+    )
+    {
+        if (Mathf.Abs(angle) <
+            tiltDeadZone)
+        {
+            return 0f;
+        }
+
+
+        /*
+         * デッドゾーンを超えた瞬間に
+         * 急に動かないようにする
+         */
+        return Mathf.Sign(angle) *
+               (
+                   Mathf.Abs(angle) -
+                   tiltDeadZone
+               );
+    }
+
+
+    // ==================================================
+    // マウス
+    // ==================================================
 
     private void ReadMouse()
     {
@@ -263,18 +537,22 @@ public class PlayerController : MonoBehaviour
             }
         }
 
+
         Vector3 mousePosition =
             Input.mousePosition;
 
+
         mousePosition.z =
             -mainCamera.transform.position.z;
+
 
         Vector3 worldPosition =
             mainCamera.ScreenToWorldPoint(
                 mousePosition
             );
 
-        targetPosition =
+
+        mouseTargetPosition =
             new Vector2(
                 worldPosition.x,
                 worldPosition.y
@@ -282,247 +560,37 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    // =====================================
-    // Joy-Con取得
-    // =====================================
-
-    private void TryGetJoycon()
-    {
-        if (JoyconManager.Instance == null)
-        {
-            if (!managerWarningLogged)
-            {
-                Debug.LogWarning(
-                    "JoyconManagerが見つかりません"
-                );
-
-                managerWarningLogged = true;
-            }
-
-            return;
-        }
-
-        managerWarningLogged = false;
-
-        List<Joycon> joycons =
-            JoyconManager.Instance.j;
-
-        if (joycons == null ||
-            joycons.Count == 0)
-        {
-            if (!joyconWarningLogged)
-            {
-                Debug.LogWarning(
-                    "Joy-Conが認識されていません"
-                );
-
-                joyconWarningLogged = true;
-            }
-
-            return;
-        }
-
-        if (joyconIndex < 0 ||
-            joyconIndex >= joycons.Count)
-        {
-            joyconIndex = 0;
-        }
-
-        Joycon candidate =
-            joycons[joyconIndex];
-
-        /*
-         * IMUが使える状態になるまで待つ
-         */
-        if (candidate.state !=
-            Joycon.state_.IMU_DATA_OK)
-        {
-            return;
-        }
-
-        joycon = candidate;
-
-        joyconWarningLogged = false;
-
-        CalibratePointer();
-
-        Debug.Log(
-            "Joy-Con準備完了！"
-        );
-    }
-
-
-    // =====================================
-    // Joy-Conポインター
-    // =====================================
-
-    private void CalibratePointer()
-    {
-        if (joycon == null)
-        {
-            return;
-        }
-
-        /*
-         * 現在のJoy-Conの向きを
-         * 中央方向として保存
-         */
-        neutralRotation =
-            joycon.GetVector();
-
-        /*
-         * 現在のPlayer位置を
-         * ポインターの基準位置にする
-         */
-        pointerOrigin =
-            rb.position;
-
-        targetPosition =
-            rb.position;
-
-        pointerCalibrated = true;
-    }
-
-
-    private void ReadJoyconPointer()
-    {
-        if (!pointerCalibrated)
-        {
-            return;
-        }
-
-        Quaternion currentRotation =
-            joycon.GetVector();
-
-        /*
-         * 中央姿勢との差分
-         */
-        Quaternion relativeRotation =
-            Quaternion.Inverse(
-                neutralRotation
-            ) *
-            currentRotation;
-
-        /*
-         * Joy-Conが指している方向
-         */
-        Vector3 pointerDirection =
-            relativeRotation *
-            Vector3.forward;
-
-
-        /*
-         * 仮想平面より後ろを向いていたら
-         * 計算しない
-         */
-        if (pointerDirection.z <= 0.05f)
-        {
-            return;
-        }
-
-
-        /*
-         * 仮想平面との交点
-         */
-        float intersectionDistance =
-            pointerDistance /
-            pointerDirection.z;
-
-        float x =
-            pointerDirection.x *
-            intersectionDistance;
-
-        float y =
-            pointerDirection.y *
-            intersectionDistance;
-
-
-        // 軸交換
-        if (swapAxes)
-        {
-            float temp = x;
-
-            x = y;
-            y = temp;
-        }
-
-
-        // 左右反転
-        if (invertX)
-        {
-            x = -x;
-        }
-
-
-        // 上下反転
-        if (invertY)
-        {
-            y = -y;
-        }
-
-
-        // 感度
-        x *= pointerSensitivity;
-        y *= pointerSensitivity;
-
-
-        // 手ブレ除去
-        if (Mathf.Abs(x) <
-            pointerDeadZone)
-        {
-            x = 0f;
-        }
-
-        if (Mathf.Abs(y) <
-            pointerDeadZone)
-        {
-            y = 0f;
-        }
-
-
-        Vector2 pointerOffset =
-            new Vector2(x, y);
-
-        /*
-         * 最大移動範囲
-         */
-        pointerOffset =
-            Vector2.ClampMagnitude(
-                pointerOffset,
-                maximumPointerOffset
-            );
-
-
-        /*
-         * 基準位置 + ポインター位置
-         */
-        targetPosition =
-            pointerOrigin +
-            pointerOffset;
-    }
-
-
-    // =====================================
-    // ゲーム開始・停止
-    // =====================================
+    // ==================================================
+    // GameManager
+    // ==================================================
 
     public void StartMoving()
     {
         canMove = true;
 
-        targetPosition =
+        tiltInput =
+            Vector2.zero;
+
+        mouseTargetPosition =
             rb.position;
 
-        if (controlMode == ControlMode.JoyCon)
+
+        /*
+         * SPACEを押した瞬間の
+         * Joy-Con姿勢を中央にする
+         */
+        if (controlMode ==
+            ControlMode.JoyConTilt)
         {
             if (joycon == null)
             {
                 TryGetJoycon();
             }
 
+
             if (joycon != null)
             {
-                CalibratePointer();
+                CalibrateJoycon();
             }
         }
     }
@@ -532,11 +600,12 @@ public class PlayerController : MonoBehaviour
     {
         canMove = false;
 
-        rb.linearVelocity =
+        tiltInput =
             Vector2.zero;
 
-        targetPosition =
-            rb.position;
+
+        rb.linearVelocity =
+            Vector2.zero;
     }
 
 
@@ -553,43 +622,53 @@ public class PlayerController : MonoBehaviour
             knockbackCoroutine = null;
         }
 
+
         canMove = false;
         isKnockback = false;
+
+        tiltInput =
+            Vector2.zero;
+
 
         rb.linearVelocity =
             Vector2.zero;
 
+
         rb.position =
             position;
 
-        pointerOrigin =
+
+        mouseTargetPosition =
             position;
 
-        targetPosition =
-            position;
 
-        if (controlMode == ControlMode.JoyCon &&
+        if (controlMode ==
+            ControlMode.JoyConTilt &&
             joycon != null)
         {
-            CalibratePointer();
+            CalibrateJoycon();
         }
     }
 
 
-    // =====================================
-    // 操作モード変更
-    // =====================================
+    // ==================================================
+    // 操作切り替え
+    // ==================================================
 
     public void SetMouseMode()
     {
         controlMode =
             ControlMode.Mouse;
 
-        targetPosition =
+        tiltInput =
+            Vector2.zero;
+
+        mouseTargetPosition =
             rb.position;
 
+
         Debug.Log(
-            "操作モード：Mouse"
+            "操作：Mouse"
         );
     }
 
@@ -597,30 +676,30 @@ public class PlayerController : MonoBehaviour
     public void SetJoyConMode()
     {
         controlMode =
-            ControlMode.JoyCon;
+            ControlMode.JoyConTilt;
 
-        targetPosition =
-            rb.position;
 
         if (joycon == null)
         {
             TryGetJoycon();
         }
 
+
         if (joycon != null)
         {
-            CalibratePointer();
+            CalibrateJoycon();
         }
 
+
         Debug.Log(
-            "操作モード：Joy-Con"
+            "操作：Joy-Con Tilt"
         );
     }
 
 
-    // =====================================
+    // ==================================================
     // ノックバック
-    // =====================================
+    // ==================================================
 
     public void Knockback(
         Vector2 direction
@@ -632,6 +711,7 @@ public class PlayerController : MonoBehaviour
                 knockbackCoroutine
             );
         }
+
 
         knockbackCoroutine =
             StartCoroutine(
@@ -648,8 +728,13 @@ public class PlayerController : MonoBehaviour
     {
         isKnockback = true;
 
+        tiltInput =
+            Vector2.zero;
+
+
         rb.linearVelocity =
             Vector2.zero;
+
 
         rb.AddForce(
             direction.normalized *
@@ -657,23 +742,20 @@ public class PlayerController : MonoBehaviour
             ForceMode2D.Impulse
         );
 
+
         yield return
             new WaitForSeconds(
                 knockbackDuration
             );
 
+
         rb.linearVelocity =
             Vector2.zero;
 
-        /*
-         * ノックバック後の位置を
-         * Joy-Conの新しい基準位置にする
-         */
-        pointerOrigin =
+
+        mouseTargetPosition =
             rb.position;
 
-        targetPosition =
-            rb.position;
 
         isKnockback = false;
 
@@ -681,30 +763,24 @@ public class PlayerController : MonoBehaviour
     }
 
 
-    // =====================================
-    // Joy-Con振動
-    // =====================================
+    // ==================================================
+    // 振動
+    // ==================================================
 
     public void Rumble()
     {
-        /*
-         * マウスモードでは振動させない
-         */
-        if (controlMode != ControlMode.JoyCon)
-        {
-            return;
-        }
-
         if (joycon == null)
         {
             return;
         }
+
 
         if (joycon.state <=
             Joycon.state_.ATTACHED)
         {
             return;
         }
+
 
         joycon.SetRumble(
             rumbleLowFrequency,
