@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("ƒQ[ƒ€ƒIƒuƒWƒFƒNƒg")]
+    [Header("ï¿½Qï¿½[ï¿½ï¿½ï¿½Iï¿½uï¿½Wï¿½Fï¿½Nï¿½g")]
     [SerializeField]
     private PlayerController player;
 
@@ -19,6 +19,9 @@ public class GameManager : MonoBehaviour
 
     [SerializeField]
     private Text statusText;
+
+    [SerializeField]
+    private IrritationManager irritationManager;
 
     private bool isPlaying;
     private float elapsedTime;
@@ -39,13 +42,13 @@ public class GameManager : MonoBehaviour
             UpdateTimerText();
         }
 
-        // SPACEƒL[‚ÅƒQ[ƒ€ŠJn
+        // SPACEï¿½Lï¿½[ï¿½ÅƒQï¿½[ï¿½ï¿½ï¿½Jï¿½n
         if (Input.GetKeyDown(KeyCode.Space) && !isPlaying)
         {
             StartGame();
         }
 
-        // RƒL[‚ÅƒŠƒZƒbƒg
+        // Rï¿½Lï¿½[ï¿½Åƒï¿½ï¿½Zï¿½bï¿½g
         if (Input.GetKeyDown(KeyCode.R))
         {
             ResetGame();
@@ -57,19 +60,19 @@ public class GameManager : MonoBehaviour
         if (player == null)
         {
             Debug.LogError(
-                "GameManager‚ÉPlayer‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñB"
+                "GameManagerã«PlayerãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚"
             );
 
             return;
         }
 
-        // HP‚ª0‚Ìó‘Ô‚Å‚ÍSPACE‚ÅÄŠJ‚Å‚«‚È‚¢
-        // RƒL[‚ÅƒŠƒZƒbƒg‚µ‚Ä‚©‚çŠJn‚·‚é
+        // HPï¿½ï¿½0ï¿½Ìï¿½Ô‚Å‚ï¿½SPACEï¿½ÅÄŠJï¿½Å‚ï¿½ï¿½È‚ï¿½
+        // Rï¿½Lï¿½[ï¿½Åƒï¿½ï¿½Zï¿½bï¿½gï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½Jï¿½nï¿½ï¿½ï¿½ï¿½
         if (playerHealth != null &&
             playerHealth.CurrentHP <= 0)
         {
             SetStatusText(
-                "RƒL[‚ÅƒŠƒgƒ‰ƒC"
+                "Rã‚­ãƒ¼ã§ãƒªãƒˆãƒ©ã‚¤"
             );
 
             return;
@@ -83,7 +86,7 @@ public class GameManager : MonoBehaviour
         SetStatusText("");
         UpdateTimerText();
 
-        Debug.Log("ƒQ[ƒ€ŠJn");
+        Debug.Log("ï¿½Qï¿½[ï¿½ï¿½ï¿½Jï¿½n");
     }
 
     public void GameOver()
@@ -101,11 +104,11 @@ public class GameManager : MonoBehaviour
         }
 
         SetStatusText(
-            "ƒQ[ƒ€ƒI[ƒo[I\n" +
-            "RƒL[‚ÅƒŠƒgƒ‰ƒC"
+            "ã‚²ãƒ¼ãƒ ã‚ªãƒ¼ãƒãƒ¼ï¼\n" +
+            "Rã‚­ãƒ¼ã§ãƒªãƒˆãƒ©ã‚¤"
         );
 
-        Debug.Log("ƒQ[ƒ€ƒI[ƒo[");
+        Debug.Log("ã‚²ãƒ¼ãƒ ã‚ªãƒ¼ãƒãƒ¼");
     }
 
     public void GameClear()
@@ -123,17 +126,17 @@ public class GameManager : MonoBehaviour
         }
 
         SetStatusText(
-            "ƒNƒŠƒAI\n" +
-            "ƒ^ƒCƒ€F" +
+            "ã‚¯ãƒªã‚¢ï¼\n" +
+            "ã‚¿ã‚¤ãƒ ï¼š" +
             elapsedTime.ToString("F2") +
-            "•b\n" +
-            "RƒL[‚ÅƒŠƒgƒ‰ƒC"
+            "ç§’\n" +
+            "Rã‚­ãƒ¼ã§ãƒªãƒˆãƒ©ã‚¤"
         );
 
         Debug.Log(
-            "ƒNƒŠƒAI ƒ^ƒCƒ€F" +
+            "ã‚¯ãƒªã‚¢ï¼ ã‚¿ã‚¤ãƒ ï¼š" +
             elapsedTime.ToString("F2") +
-            "•b"
+            "ç§’"
         );
     }
 
@@ -142,7 +145,7 @@ public class GameManager : MonoBehaviour
         isPlaying = false;
         elapsedTime = 0f;
 
-        // Player‚ğƒXƒ^[ƒgˆÊ’u‚Ö–ß‚·
+        // Playerï¿½ï¿½ï¿½Xï¿½^ï¿½[ï¿½gï¿½Ê’uï¿½Ö–ß‚ï¿½
         if (player != null && startPoint != null)
         {
             player.ResetPlayer(
@@ -152,11 +155,11 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.LogWarning(
-                "Player‚Ü‚½‚ÍStartPoint‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñB"
+                "Playerã¾ãŸã¯StartPointãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚"
             );
         }
 
-        // HP‚ğÅ‘å‚Ü‚Å‰ñ•œ
+        // HPï¿½ï¿½ï¿½Å‘ï¿½Ü‚Å‰ï¿½
         if (playerHealth != null)
         {
             playerHealth.ResetHealth();
@@ -164,18 +167,23 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.LogWarning(
-                "PlayerHealth‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñB"
+                "PlayerHealthãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“ã€‚"
             );
+        }
+
+        if (irritationManager != null)
+        {
+            irritationManager.ResetIrritation();
         }
 
         UpdateTimerText();
 
         SetStatusText(
-            "SPACEƒL[‚ÅƒXƒ^[ƒg"
+            "SPACEã‚­ãƒ¼ã§ã‚¹ã‚¿ãƒ¼ãƒˆ"
         );
 
         Debug.Log(
-            "SPACEƒL[‚ÅƒXƒ^[ƒg"
+            "SPACEã‚­ãƒ¼ã§ã‚¹ã‚¿ãƒ¼ãƒˆ"
         );
     }
 
@@ -184,7 +192,7 @@ public class GameManager : MonoBehaviour
         if (timerText != null)
         {
             timerText.text =
-                "TIMEF " +
+                "TIME: " +
                 elapsedTime.ToString("F2");
         }
     }

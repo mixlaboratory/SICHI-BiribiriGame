@@ -4,32 +4,32 @@ using UnityEngine.UI;
 
 public class IrritationManager : MonoBehaviour
 {
-    [Header("©“®ƒeƒXƒg")]
-    [Tooltip("3•b‚²‚Æ‚ÉƒCƒ‰ƒCƒ‰“x‚ğ©“®•ÏX‚·‚é")]
+    [Header("è‡ªå‹•ãƒ†ã‚¹ãƒˆ")]
+    [Tooltip("3ç§’ã”ã¨ã«ã‚¤ãƒ©ã‚¤ãƒ©åº¦ã‚’è‡ªå‹•å¤‰æ›´ã™ã‚‹")]
     [SerializeField]
     private bool autoChange = true;
 
-    [Tooltip("’l‚ğ•ÏX‚·‚éŠÔŠu")]
+    [Tooltip("å€¤ã‚’å¤‰æ›´ã™ã‚‹é–“éš”")]
     [SerializeField]
     private float changeInterval = 3f;
 
-    [Tooltip("ƒ‰ƒ“ƒ_ƒ€’l‚ÌÅ¬’l")]
+    [Tooltip("ãƒ©ãƒ³ãƒ€ãƒ å€¤ã®æœ€å°å€¤")]
     [SerializeField, Range(0f, 100f)]
     private float minimumIrritation = 0f;
 
-    [Tooltip("ƒ‰ƒ“ƒ_ƒ€’l‚ÌÅ‘å’l")]
+    [Tooltip("ãƒ©ãƒ³ãƒ€ãƒ å€¤ã®æœ€å¤§å€¤")]
     [SerializeField, Range(0f, 100f)]
     private float maximumIrritation = 100f;
 
-    [Tooltip("ƒQ[ƒ€’†‚¾‚¯©“®•ÏX‚·‚é")]
+    [Tooltip("ã‚²ãƒ¼ãƒ ä¸­ã ã‘è‡ªå‹•å¤‰æ›´ã™ã‚‹")]
     [SerializeField]
     private bool changeOnlyWhilePlaying = true;
 
-    [Header("’l‚Ì•Ï‰»")]
+    [Header("å€¤ã®å¤‰åŒ–")]
     [SerializeField, Range(0f, 100f)]
     private float initialIrritation = 0f;
 
-    [Tooltip("Œ»İ’l‚ª–Ú•W’l‚Ö‹ß‚Ã‚­‘¬‚³")]
+    [Tooltip("ç¾åœ¨å€¤ãŒç›®æ¨™å€¤ã¸è¿‘ã¥ãé€Ÿã•")]
     [SerializeField]
     private float responseSpeed = 40f;
 
@@ -40,7 +40,7 @@ public class IrritationManager : MonoBehaviour
     [SerializeField]
     private Image irritationFill;
 
-    [Header("QÆ")]
+    [Header("å‚ç…§")]
     [SerializeField]
     private GameManager gameManager;
 
@@ -151,7 +151,7 @@ public class IrritationManager : MonoBehaviour
         );
 
         Debug.Log(
-            "ƒCƒ‰ƒCƒ‰“x‚Ì–Ú•W’l‚ğ•ÏXF" +
+            "ã‚¤ãƒ©ã‚¤ãƒ©åº¦ã®ç›®æ¨™å€¤ã‚’å¤‰æ›´ï¼š" +
             Mathf.RoundToInt(targetIrritation)
         );
     }
@@ -164,7 +164,7 @@ public class IrritationManager : MonoBehaviour
         if (irritationText != null)
         {
             irritationText.text =
-                "ƒCƒ‰ƒCƒ‰“xF" +
+                "ã‚¤ãƒ©ã‚¤ãƒ©åº¦ï¼š" +
                 Mathf.RoundToInt(currentIrritation);
         }
 
@@ -195,7 +195,7 @@ public class IrritationManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ŠO•”‚©‚ç0`100‚Ì’l‚ğİ’è‚·‚éB
+    /// å¤–éƒ¨ã‹ã‚‰0ï½100ã®å€¤ã‚’è¨­å®šã™ã‚‹ã€‚
     /// </summary>
     public void SetIrritation(float value)
     {
@@ -207,7 +207,7 @@ public class IrritationManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ŠO•”‚©‚ç0`1‚Ì’l‚ğİ’è‚·‚éB
+    /// å¤–éƒ¨ã‹ã‚‰0ï½1ã®å€¤ã‚’è¨­å®šã™ã‚‹ã€‚
     /// </summary>
     public void SetNormalizedIrritation(float value)
     {
@@ -220,5 +220,20 @@ public class IrritationManager : MonoBehaviour
     {
         autoChange = enabled;
         changeTimer = changeInterval;
+    }
+
+    public void ResetIrritation()
+    {
+        currentIrritation = initialIrritation;
+        targetIrritation = initialIrritation;
+
+        changeTimer = changeInterval;
+        lastNotifiedValue = -1f;
+
+        UpdateUI();
+
+        OnIrritationChanged?.Invoke(
+            currentIrritation
+        );
     }
 }
