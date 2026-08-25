@@ -56,5 +56,5 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "SICHI editor.sln"
+    "dotnet.defaultSolution": "SICHI editor2.sln"
 }

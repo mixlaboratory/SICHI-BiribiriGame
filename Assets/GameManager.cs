@@ -8,6 +8,9 @@ public class GameManager : MonoBehaviour
     private PlayerController player;
 
     [SerializeField]
+    private PlayerHealth playerHealth;
+
+    [SerializeField]
     private Transform startPoint;
 
     [Header("UI")]
@@ -36,11 +39,13 @@ public class GameManager : MonoBehaviour
             UpdateTimerText();
         }
 
+        // SPACEキーでゲーム開始
         if (Input.GetKeyDown(KeyCode.Space) && !isPlaying)
         {
             StartGame();
         }
 
+        // Rキーでリセット
         if (Input.GetKeyDown(KeyCode.R))
         {
             ResetGame();
@@ -51,7 +56,22 @@ public class GameManager : MonoBehaviour
     {
         if (player == null)
         {
-            Debug.LogError("Playerが設定されていません。");
+            Debug.LogError(
+                "GameManagerにPlayerが設定されていません。"
+            );
+
+            return;
+        }
+
+        // HPが0の状態ではSPACEで再開できない
+        // Rキーでリセットしてから開始する
+        if (playerHealth != null &&
+            playerHealth.CurrentHP <= 0)
+        {
+            SetStatusText(
+                "Rキーでリトライ"
+            );
+
             return;
         }
 
@@ -80,9 +100,12 @@ public class GameManager : MonoBehaviour
             player.StopMoving();
         }
 
-        SetStatusText("失敗！\nRキーでリトライ");
+        SetStatusText(
+            "ゲームオーバー！\n" +
+            "Rキーでリトライ"
+        );
 
-        Debug.Log("失敗しました。Rキーでリトライ");
+        Debug.Log("ゲームオーバー");
     }
 
     public void GameClear()
@@ -101,7 +124,9 @@ public class GameManager : MonoBehaviour
 
         SetStatusText(
             "クリア！\n" +
-            "タイム：" + elapsedTime.ToString("F2") + "秒\n" +
+            "タイム：" +
+            elapsedTime.ToString("F2") +
+            "秒\n" +
             "Rキーでリトライ"
         );
 
@@ -117,9 +142,12 @@ public class GameManager : MonoBehaviour
         isPlaying = false;
         elapsedTime = 0f;
 
+        // Playerをスタート位置へ戻す
         if (player != null && startPoint != null)
         {
-            player.ResetPlayer(startPoint.position);
+            player.ResetPlayer(
+                startPoint.position
+            );
         }
         else
         {
@@ -128,10 +156,27 @@ public class GameManager : MonoBehaviour
             );
         }
 
-        UpdateTimerText();
-        SetStatusText("SPACEキーでスタート");
+        // HPを最大まで回復
+        if (playerHealth != null)
+        {
+            playerHealth.ResetHealth();
+        }
+        else
+        {
+            Debug.LogWarning(
+                "PlayerHealthが設定されていません。"
+            );
+        }
 
-        Debug.Log("SPACEキーでスタート");
+        UpdateTimerText();
+
+        SetStatusText(
+            "SPACEキーでスタート"
+        );
+
+        Debug.Log(
+            "SPACEキーでスタート"
+        );
     }
 
     private void UpdateTimerText()
