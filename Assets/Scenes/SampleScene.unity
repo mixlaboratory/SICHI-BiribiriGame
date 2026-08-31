@@ -2217,7 +2217,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6985632623001d41b4907d6429708d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 4
+  maxHP: 20
   invincibleDuration: 1
   hpText: {fileID: 1429950207}
   gameManager: {fileID: 1426735011}

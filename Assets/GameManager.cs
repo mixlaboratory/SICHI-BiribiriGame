@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -138,6 +139,11 @@ public class GameManager : MonoBehaviour
             elapsedTime.ToString("F2") +
             "秒"
         );
+
+        GameResultData.ClearTime = elapsedTime;
+
+
+        SceneManager.LoadScene("RankingScene");
     }
 
     public void ResetGame()
@@ -145,7 +151,6 @@ public class GameManager : MonoBehaviour
         isPlaying = false;
         elapsedTime = 0f;
 
-        // Player���X�^�[�g�ʒu�֖߂�
         if (player != null && startPoint != null)
         {
             player.ResetPlayer(
@@ -159,7 +164,6 @@ public class GameManager : MonoBehaviour
             );
         }
 
-        // HP���ő�܂ŉ�
         if (playerHealth != null)
         {
             playerHealth.ResetHealth();
