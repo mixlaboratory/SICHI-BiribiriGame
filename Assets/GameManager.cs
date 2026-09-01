@@ -142,6 +142,11 @@ public class GameManager : MonoBehaviour
 
         GameResultData.ClearTime = elapsedTime;
 
+        GameResultData.ClearTime = elapsedTime;
+        GameResultData.HasResult = true;
+
+        SceneManager.LoadScene("RankingScene");
+
 
         SceneManager.LoadScene("RankingScene");
     }
